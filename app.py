@@ -49,46 +49,55 @@ LANG = {
 }
 
 # ==========================================
-# 🛠️ 核心绘图逻辑 (修复字体加载)
+# 🛠️ 核心绘图逻辑 (修复字体下载)
 # ==========================================
 
 @st.cache_resource
 def load_font_path():
     """
-    强力字体加载器：
+    强力字体加载器 (修复版)：
     1. 检查本地 font.ttf
     2. 检查系统字体
-    3. 强制从网络下载 Tinos (Times New Roman 替代品)
+    3. 尝试下载 Tinos (更稳定的 raw 链接)
+    4. 失败则尝试下载 Noto Serif (备用方案)
     """
-    # 路径列表
-    potential_paths = [
-        "font.ttf", 
-        "Tinos-Bold.ttf", 
-        "times.ttf", 
-        "Times New Roman.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf" # 常见Linux字体
+    # 1. 优先检查本地文件
+    local_files = ["font.ttf", "Tinos-Bold.ttf", "NotoSerif-Bold.ttf", "times.ttf"]
+    for f in local_files:
+        if os.path.exists(f):
+            return f
+            
+    # 2. 检查常见系统路径
+    system_fonts = [
+        "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
+        "/Library/Fonts/Times New Roman.ttf",
+        "C:/Windows/Fonts/times.ttf"
     ]
-    
-    # 1. 检查本地文件
-    for path in potential_paths:
+    for path in system_fonts:
         if os.path.exists(path):
             return path
-            
-    # 2. 如果都没有，尝试下载
-    download_url = "https://github.com/google/fonts/raw/main/ofl/tinos/Tinos-Bold.ttf"
-    save_path = "font.ttf"
+
+    # 3. 网络下载 (使用更稳定的 raw.githubusercontent 域名)
+    # 定义多个备选 URL，如果第一个失败，尝试第二个
+    font_urls = [
+        # Tinos Bold (Times New Roman 替代品)
+        ("https://raw.githubusercontent.com/google/fonts/main/ofl/tinos/Tinos-Bold.ttf", "Tinos-Bold.ttf"),
+        # Noto Serif Bold (备用方案)
+        ("https://raw.githubusercontent.com/google/fonts/main/ofl/notoserif/NotoSerif-Bold.ttf", "NotoSerif-Bold.ttf")
+    ]
     
-    try:
-        # print("正在下载字体...") # 调试用
-        r = requests.get(download_url, timeout=15)
-        if r.status_code == 200:
-            with open(save_path, 'wb') as f:
-                f.write(r.content)
-            return save_path
-    except Exception as e:
-        print(f"字体下载失败: {e}")
-        
-    return None
+    for url, filename in font_urls:
+        try:
+            # print(f"Trying to download font from: {url}")
+            r = requests.get(url, timeout=10)
+            if r.status_code == 200 and len(r.content) > 1000: # 确保下载的不是空文件
+                with open(filename, 'wb') as f:
+                    f.write(r.content)
+                return filename
+        except Exception as e:
+            continue # 尝试下一个
+
+    return None # 全部失败，回退默认
 
 def get_font(path, size):
     try:
@@ -211,10 +220,10 @@ def create_seal_image(company, state_input, reg_no, color_hex):
     draw = ImageDraw.Draw(img)
     fill = ImageColor.getrgb(color_hex)
     
-    # 🔥 获取字体路径 🔥
     font_path = load_font_path()
+    # 如果没有找到字体，打印警告但不崩溃
     if not font_path:
-        print("Warning: Using default font")
+        print("ALERT: Font download failed. Using default font.")
 
     # 参数
     size_seal = 75 * scale 
