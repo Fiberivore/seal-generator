@@ -7,7 +7,7 @@ import requests
 import re
 
 # ==========================================
-# 🌍 语言包配置 (Localization)
+# 🌍 语言包配置
 # ==========================================
 LANG = {
     "CN": {
@@ -18,7 +18,6 @@ LANG = {
         "lbl_state": "注册州名 (自动添加 STATE OF)",
         "lbl_reg": "注册号 (无需输入 No.)",
         "lbl_color": "印章颜色",
-        "btn_generate": "生成印章",
         "btn_download": "⬇️ 下载 PNG 印章",
         "loading": "正在排版绘制...",
         "info_start": "👈 请在左侧输入信息，并按回车键预览。",
@@ -37,7 +36,6 @@ LANG = {
         "lbl_state": "State Name (Auto adds 'STATE OF')",
         "lbl_reg": "Registration No. (No prefix needed)",
         "lbl_color": "Seal Color",
-        "btn_generate": "Generate Seal",
         "btn_download": "⬇️ Download PNG",
         "loading": "Rendering seal...",
         "info_start": "👈 Please enter details on the left to start.",
@@ -51,34 +49,46 @@ LANG = {
 }
 
 # ==========================================
-# 🛠️ 核心绘图逻辑
+# 🛠️ 核心绘图逻辑 (修复字体加载)
 # ==========================================
 
-def load_font():
-    """智能字体加载器"""
-    system_paths = [
-        "/System/Library/Fonts/Times.ttc",
-        "/Library/Fonts/Times New Roman.ttf",
-        "C:/Windows/Fonts/times.ttf",
-        "C:/Windows/Fonts/georgia.ttf"
+@st.cache_resource
+def load_font_path():
+    """
+    强力字体加载器：
+    1. 检查本地 font.ttf
+    2. 检查系统字体
+    3. 强制从网络下载 Tinos (Times New Roman 替代品)
+    """
+    # 路径列表
+    potential_paths = [
+        "font.ttf", 
+        "Tinos-Bold.ttf", 
+        "times.ttf", 
+        "Times New Roman.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf" # 常见Linux字体
     ]
-    for path in system_paths:
-        if os.path.exists(path): return path
-        
-    local_paths = ["times.ttf", "Times New Roman.ttf", "Tinos-Bold.ttf"]
-    for name in local_paths:
-        if os.path.exists(name): return name
-
-    font_url = "https://github.com/google/fonts/raw/main/ofl/tinos/Tinos-Bold.ttf"
-    local_font_name = "Tinos-Bold.ttf"
+    
+    # 1. 检查本地文件
+    for path in potential_paths:
+        if os.path.exists(path):
+            return path
+            
+    # 2. 如果都没有，尝试下载
+    download_url = "https://github.com/google/fonts/raw/main/ofl/tinos/Tinos-Bold.ttf"
+    save_path = "font.ttf"
+    
     try:
-        if not os.path.exists(local_font_name):
-            r = requests.get(font_url, timeout=5)
-            with open(local_font_name, 'wb') as f:
+        # print("正在下载字体...") # 调试用
+        r = requests.get(download_url, timeout=15)
+        if r.status_code == 200:
+            with open(save_path, 'wb') as f:
                 f.write(r.content)
-        return local_font_name
-    except:
-        return None
+            return save_path
+    except Exception as e:
+        print(f"字体下载失败: {e}")
+        
+    return None
 
 def get_font(path, size):
     try:
@@ -105,7 +115,6 @@ def draw_dashed_ring(draw, center, radius, width, dash_len, gap_len, fill):
                  start=start, end=end, fill=fill, width=int(width))
 
 def draw_curved_text_precise(img, text, font_path, initial_size, center, radius, is_top, fill, max_arc_angle=150):
-    """弧形文字绘制（带自动缩放）"""
     if not text: return
     draw = ImageDraw.Draw(img)
     circumference = 2 * math.pi * radius
@@ -171,9 +180,6 @@ def draw_curved_text_precise(img, text, font_path, initial_size, center, radius,
             current_angle -= angle_step
 
 def draw_straight_text_autosize(draw, text, font_path, max_width, initial_size, y_center, center_x, fill):
-    """
-    直线文字绘制，带自动缩放功能。
-    """
     if not text: return
     current_size = initial_size
     min_size = 10 
@@ -195,7 +201,6 @@ def draw_straight_text_autosize(draw, text, font_path, max_width, initial_size, 
     text_height = bbox[3] - bbox[1]
     draw.text((center_x - text_width / 2, y_center - text_height / 2), text, font=font, fill=fill)
 
-
 def create_seal_image(company, state_input, reg_no, color_hex):
     base_size = 500
     scale = 2 
@@ -205,22 +210,25 @@ def create_seal_image(company, state_input, reg_no, color_hex):
     img = Image.new('RGBA', (canvas_size, canvas_size), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     fill = ImageColor.getrgb(color_hex)
-    font_path = load_font()
+    
+    # 🔥 获取字体路径 🔥
+    font_path = load_font_path()
+    if not font_path:
+        print("Warning: Using default font")
 
-    # --- 📐 参数调整区 ---
+    # 参数
     size_seal = 75 * scale 
     size_inner_arc_text = 90 * scale 
     size_outer_text = 75 * scale 
     size_reg = 50 * scale 
 
-    # --- 1. 绘制边框 ---
+    # 1. 边框
     draw_radial_dashes(draw, center, canvas_size*0.44, canvas_size*0.48, 120, 4*scale, fill)
     r_inner_ring = canvas_size*0.32
     draw_dashed_ring(draw, center, r_inner_ring, 3*scale, 15*scale, 12*scale, fill)
     
-    # --- 2. 外部圆弧文字 ---
+    # 2. 外部圆弧
     text_r = canvas_size * 0.39 
-    
     clean_state = state_input.strip().upper()
     if clean_state and not clean_state.startswith("STATE OF"):
         final_state_text = f"STATE OF {clean_state}"
@@ -230,7 +238,7 @@ def create_seal_image(company, state_input, reg_no, color_hex):
     draw_curved_text_precise(img, company.upper(), font_path, size_outer_text, center, text_r, True, fill, max_arc_angle=150)
     draw_curved_text_precise(img, final_state_text, font_path, size_outer_text, center, text_r, False, fill, max_arc_angle=150)
 
-    # --- 3. 内部圆弧文字 (LLC放大版) ---
+    # 3. 内部圆弧
     clean_name = company.strip().upper()
     if clean_name.endswith("LLC") or clean_name.endswith("L.L.C.") or clean_name.endswith("L.L.C"):
         inner_top_text = "LIMITED LIABILITY COMPANY"
@@ -240,24 +248,20 @@ def create_seal_image(company, state_input, reg_no, color_hex):
     inner_text_r = canvas_size * 0.25
     draw_curved_text_precise(img, inner_top_text, font_path, size_inner_arc_text, center, inner_text_r, True, fill, max_arc_angle=160)
 
-    # --- 4. 中间 SEAL 文字 (绝对居中) ---
+    # 4. SEAL (绝对居中)
     f_seal = get_font(font_path, size_seal)
     bbox = draw.textbbox((0,0), "SEAL", font=f_seal)
     w_seal = bbox[2]-bbox[0]
     h_seal = bbox[3]-bbox[1]
-    
-    # 🔥🔥🔥 修正：绝对垂直居中，移除偏移量 🔥🔥🔥
-    # 原来是 center[1] - h/2 + 25，现在直接 center[1] - h/2
     draw.text((center[0]-w_seal/2, center[1] - h_seal/2), "SEAL", font=f_seal, fill=fill)
 
-    # --- 5. 注册号 ---
+    # 5. 注册号
     if reg_no:
         reg_str = str(reg_no).strip()
         if not re.match(r'^no[\.\s]', reg_str, re.IGNORECASE):
             final_reg = f"No. {reg_str}"
         else:
             final_reg = reg_str
-            
         max_reg_width = (r_inner_ring * 2) * 0.70
         y_pos = center[1] + (95 * scale)
         draw_straight_text_autosize(draw, final_reg, font_path, max_reg_width, size_reg, y_pos, center[0], fill)
@@ -265,9 +269,8 @@ def create_seal_image(company, state_input, reg_no, color_hex):
     return img.resize((base_size, base_size), resample=Image.LANCZOS)
 
 # ==========================================
-# 🎨 网页界面 (UI)
+# 🎨 UI
 # ==========================================
-
 st.set_page_config(page_title="Seal Generator", page_icon="🔏", layout="centered")
 
 if 'lang' not in st.session_state:
@@ -289,8 +292,8 @@ col1, col2 = st.columns([1, 1], gap="large")
 with col1:
     st.subheader(txt["header_input"])
     name = st.text_input(txt["lbl_name"], txt["ph_name"], help=txt["help_enter"])
-    state = st.text_input(txt["lbl_state"], txt["ph_state"], help=txt["help_enter"])
-    reg_no = st.text_input(txt["lbl_reg"], txt["ph_reg"], help=txt["help_enter"])
+    state = st.text_input(txt["lbl_state"], "FLORIDA", help=txt["help_enter"])
+    reg_no = st.text_input(txt["lbl_reg"], "12345678", help=txt["help_enter"])
     color = st.color_picker(txt["lbl_color"], "#2C3E50")
 
 with col2:
