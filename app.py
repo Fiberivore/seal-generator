@@ -28,15 +28,13 @@ LANG = {
         "font_error": "⚠️ 严重错误：未找到字体文件！请确保 'Tinos-Bold.ttf' 已上传到 GitHub 项目根目录。",
         
         "usage_title": "📖 使用说明",
-        # 🔥 修改：使用 HTML 列表标签优化排版，实现自动换行和编号
-        "usage_content": """
-        <ol style="margin: 0; padding-left: 20px;">
-            <li style="margin-bottom: 10px;">美国没有所谓“公章”，所以公司印章没有固定模版，印章样式、颜色、尺寸，均可按照自己的喜欢设计。</li>
-            <li style="margin-bottom: 10px;">如果是正式文书，一般以公司负责人的亲笔签字为准。</li>
-            <li style="margin-bottom: 10px;">不同于国内，美国那边觉得公章可以造假，签字不容易伪造，而且不能确定责任，因为理论上任何人都可以拿公章来盖章，而签字只有本人才可以。</li>
-            <li>所以相对于印章，美国更加注重签字。</li>
-        </ol>
-        """,
+        # 🔥 修复：去除了 HTML 标签前的缩进空格，防止被识别为代码块
+        "usage_content": """<ol style="margin: 0; padding-left: 20px;">
+<li style="margin-bottom: 10px;">美国没有所谓“公章”，所以公司印章没有固定模版，印章样式、颜色、尺寸，均可按照自己的喜欢设计。</li>
+<li style="margin-bottom: 10px;">如果是正式文书，一般以公司负责人的亲笔签字为准。</li>
+<li style="margin-bottom: 10px;">不同于国内，美国那边觉得公章可以造假，签字不容易伪造，而且不能确定责任，因为理论上任何人都可以拿公章来盖章，而签字只有本人才可以。</li>
+<li>所以相对于印章，美国更加注重签字。</li>
+</ol>""",
         "copyright": "© <a href='https://www.meisitongllc.com/' target='_blank' rel='nofollow' style='color: inherit; text-decoration: none; border-bottom: 1px dotted #aaa;'>美司通</a> www.meisitongllc.com 版权所有"
     },
     "EN": {
@@ -58,15 +56,13 @@ LANG = {
         "font_error": "⚠️ CRITICAL ERROR: Font file not found! Please ensure 'Tinos-Bold.ttf' is uploaded to the GitHub root directory.",
         
         "usage_title": "📖 Usage Guide",
-        # 🔥 Change: Using HTML ordered lists for better formatting
-        "usage_content": """
-        <ol style="margin: 0; padding-left: 20px;">
-            <li style="margin-bottom: 10px;">In the US, there is no strict legal template for a "corporate seal." You can customize the design, color, and size freely.</li>
-            <li style="margin-bottom: 10px;">For formal documents, the authorized officer's signature is the primary binding factor.</li>
-            <li style="margin-bottom: 10px;">Unlike in some regions, seals are considered easier to forge than signatures. US law prioritizes personal accountability through signatures.</li>
-            <li>Therefore, signatures carry more weight than seals in US business practices.</li>
-        </ol>
-        """,
+        # 🔥 Fix: Removed indentation to prevent code block rendering
+        "usage_content": """<ol style="margin: 0; padding-left: 20px;">
+<li style="margin-bottom: 10px;">In the US, there is no strict legal template for a "corporate seal." You can customize the design, color, and size freely.</li>
+<li style="margin-bottom: 10px;">For formal documents, the authorized officer's signature is the primary binding factor.</li>
+<li style="margin-bottom: 10px;">Unlike in some regions, seals are considered easier to forge than signatures. US law prioritizes personal accountability through signatures.</li>
+<li>Therefore, signatures carry more weight than seals in US business practices.</li>
+</ol>""",
         "copyright": "© <a href='https://www.meisitongllc.com/' target='_blank' rel='nofollow' style='color: inherit; text-decoration: none; border-bottom: 1px dotted #aaa;'>Meisitong</a> www.meisitongllc.com All Rights Reserved"
     }
 }
@@ -330,7 +326,7 @@ st.markdown("---")
 # 📄 使用说明板块
 with st.container():
     st.markdown(f"#### {txt['usage_title']}")
-    # 使用灰色小字排版 + HTML 有序列表
+    # 🔥 修复：使用无缩进的 HTML 字符串
     st.markdown(f"""
     <div style="color: #666; font-size: 0.9em; line-height: 1.6; background-color: #f9f9f9; padding: 15px; border-radius: 5px;">
     {txt['usage_content']}
