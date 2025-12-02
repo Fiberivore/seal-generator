@@ -27,7 +27,6 @@ LANG = {
         "help_enter": "💡 修改内容后，请按键盘【回车键 (Enter)】刷新右侧预览图",
         "font_error": "⚠️ 严重错误：未找到字体文件！请确保 'Tinos-Bold.ttf' 已上传到 GitHub 项目根目录。",
         
-        # --- 新增文案 ---
         "usage_title": "📖 使用说明",
         "usage_content": """
         美国没有所谓“公章”，所以公司印章没有固定模版，印章样式、颜色、尺寸，均可按照自己的喜欢设计。
@@ -35,7 +34,8 @@ LANG = {
         不同于国内，美国那边觉得公章可以造假，签字不容易伪造，而且不能确定责任，因为理论上任何人都可以拿公章来盖章，而签字只有本人才可以。
         所以相对于印章，美国更加注重签字。
         """,
-        "copyright": "© 美司通 www.meisitongllc.com 版权所有"
+        # 🔥 修改：添加 nofollow 链接
+        "copyright": "© <a href='https://www.meisitongllc.com/' target='_blank' rel='nofollow' style='color: inherit; text-decoration: none; border-bottom: 1px dotted #aaa;'>美司通</a> www.meisitongllc.com 版权所有"
     },
     "EN": {
         "title": "🇺🇸 US Corporate Seal Generator",
@@ -55,19 +55,19 @@ LANG = {
         "help_enter": "Press Enter to apply changes",
         "font_error": "⚠️ CRITICAL ERROR: Font file not found! Please ensure 'Tinos-Bold.ttf' is uploaded to the GitHub root directory.",
         
-        # --- New Text ---
         "usage_title": "📖 Usage Guide",
         "usage_content": """
         In the US, there is no strict legal template for a "corporate seal." You can customize the design, color, and size. 
         For formal documents, the authorized officer's signature is the primary binding factor. 
         Unlike in some regions, seals are considered easier to forge than signatures. US law prioritizes personal accountability through signatures.
         """,
-        "copyright": "© Meisitong www.meisitongllc.com All Rights Reserved"
+        # 🔥 Change: Added nofollow link
+        "copyright": "© <a href='https://www.meisitongllc.com/' target='_blank' rel='nofollow' style='color: inherit; text-decoration: none; border-bottom: 1px dotted #aaa;'>Meisitong</a> www.meisitongllc.com All Rights Reserved"
     }
 }
 
 # ==========================================
-# 🛠️ 核心绘图逻辑 (保持不变，稳定版)
+# 🛠️ 核心绘图逻辑 (保持不变)
 # ==========================================
 
 # 定义我们打包上传的字体文件名
@@ -299,7 +299,6 @@ with col2:
         with st.spinner(txt["loading"]):
             try:
                 img = create_seal_image(name, state, reg_no, color)
-                # 使用灰色网格背景展示透明度
                 st.markdown("""<style>[data-testid="stImage"]{background:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGcmaWxsPSIjZjBmMGYwIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiLz48cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIvPjwvZz48L3N2Zz4=");border-radius:8px;}</style>""", unsafe_allow_html=True)
                 st.image(img, use_container_width=True)
                 
@@ -325,14 +324,13 @@ st.markdown("---")
 # 📄 使用说明板块
 with st.container():
     st.markdown(f"#### {txt['usage_title']}")
-    # 使用灰色小字排版，增加可读性
     st.markdown(f"""
     <div style="color: #666; font-size: 0.9em; line-height: 1.6; background-color: #f9f9f9; padding: 15px; border-radius: 5px;">
     {txt['usage_content']}
     </div>
     """, unsafe_allow_html=True)
 
-# 🏢 版权信息
+# 🏢 版权信息 (包含 nofollow 链接)
 st.markdown(f"""
 <div style="text-align: center; margin-top: 40px; color: #aaa; font-size: 0.8em; border-top: 1px solid #eee; padding-top: 20px;">
 {txt['copyright']}
