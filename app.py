@@ -3,7 +3,6 @@ from PIL import Image, ImageDraw, ImageFont, ImageColor
 import math
 import io
 import os
-import requests
 import re
 
 # ==========================================
@@ -21,12 +20,22 @@ LANG = {
         "btn_download": "⬇️ 下载 PNG 印章",
         "loading": "正在排版绘制...",
         "info_start": "👈 请在左侧输入信息，并按回车键预览。",
-        "warn_disclaimer": "仅供设计预览与内部存档使用。请勿用于非法用途。",
         "toggle_lang": "Switch to English",
         "ph_name": "EXAMPLE COMPANY LLC",
         "ph_state": "FLORIDA",
         "ph_reg": "12345678",
-        "help_enter": "💡 修改内容后，请按键盘【回车键 (Enter)】刷新右侧预览图"
+        "help_enter": "💡 修改内容后，请按键盘【回车键 (Enter)】刷新右侧预览图",
+        "font_error": "⚠️ 严重错误：未找到字体文件！请确保 'Tinos-Bold.ttf' 已上传到 GitHub 项目根目录。",
+        
+        # --- 新增文案 ---
+        "usage_title": "📖 使用说明",
+        "usage_content": """
+        美国没有所谓“公章”，所以公司印章没有固定模版，印章样式、颜色、尺寸，均可按照自己的喜欢设计。
+        如果是正式文书，一般以公司负责人的亲笔签字为准。
+        不同于国内，美国那边觉得公章可以造假，签字不容易伪造，而且不能确定责任，因为理论上任何人都可以拿公章来盖章，而签字只有本人才可以。
+        所以相对于印章，美国更加注重签字。
+        """,
+        "copyright": "© 美司通 www.meisitongllc.com 版权所有"
     },
     "EN": {
         "title": "🇺🇸 US Corporate Seal Generator",
@@ -39,70 +48,46 @@ LANG = {
         "btn_download": "⬇️ Download PNG",
         "loading": "Rendering seal...",
         "info_start": "👈 Please enter details on the left to start.",
-        "warn_disclaimer": "For design preview and internal archiving only. Do not use for illegal purposes.",
         "toggle_lang": "切换到中文",
         "ph_name": "EXAMPLE COMPANY LLC",
         "ph_state": "FLORIDA",
         "ph_reg": "12345678",
-        "help_enter": "Press Enter to apply changes"
+        "help_enter": "Press Enter to apply changes",
+        "font_error": "⚠️ CRITICAL ERROR: Font file not found! Please ensure 'Tinos-Bold.ttf' is uploaded to the GitHub root directory.",
+        
+        # --- New Text ---
+        "usage_title": "📖 Usage Guide",
+        "usage_content": """
+        In the US, there is no strict legal template for a "corporate seal." You can customize the design, color, and size. 
+        For formal documents, the authorized officer's signature is the primary binding factor. 
+        Unlike in some regions, seals are considered easier to forge than signatures. US law prioritizes personal accountability through signatures.
+        """,
+        "copyright": "© Meisitong www.meisitongllc.com All Rights Reserved"
     }
 }
 
 # ==========================================
-# 🛠️ 核心绘图逻辑 (修复字体下载)
+# 🛠️ 核心绘图逻辑 (保持不变，稳定版)
 # ==========================================
 
+# 定义我们打包上传的字体文件名
+BUNDLED_FONT_NAME = "Tinos-Bold.ttf"
+
 @st.cache_resource
-def load_font_path():
-    """
-    强力字体加载器 (修复版)：
-    1. 检查本地 font.ttf
-    2. 检查系统字体
-    3. 尝试下载 Tinos (更稳定的 raw 链接)
-    4. 失败则尝试下载 Noto Serif (备用方案)
-    """
-    # 1. 优先检查本地文件
-    local_files = ["font.ttf", "Tinos-Bold.ttf", "NotoSerif-Bold.ttf", "times.ttf"]
-    for f in local_files:
-        if os.path.exists(f):
-            return f
-            
-    # 2. 检查常见系统路径
-    system_fonts = [
-        "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
-        "/Library/Fonts/Times New Roman.ttf",
-        "C:/Windows/Fonts/times.ttf"
-    ]
-    for path in system_fonts:
-        if os.path.exists(path):
-            return path
-
-    # 3. 网络下载 (使用更稳定的 raw.githubusercontent 域名)
-    # 定义多个备选 URL，如果第一个失败，尝试第二个
-    font_urls = [
-        # Tinos Bold (Times New Roman 替代品)
-        ("https://raw.githubusercontent.com/google/fonts/main/ofl/tinos/Tinos-Bold.ttf", "Tinos-Bold.ttf"),
-        # Noto Serif Bold (备用方案)
-        ("https://raw.githubusercontent.com/google/fonts/main/ofl/notoserif/NotoSerif-Bold.ttf", "NotoSerif-Bold.ttf")
-    ]
-    
-    for url, filename in font_urls:
-        try:
-            # print(f"Trying to download font from: {url}")
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200 and len(r.content) > 1000: # 确保下载的不是空文件
-                with open(filename, 'wb') as f:
-                    f.write(r.content)
-                return filename
-        except Exception as e:
-            continue # 尝试下一个
-
-    return None # 全部失败，回退默认
+def get_font_path():
+    """简单直接的字体检查"""
+    if os.path.exists(BUNDLED_FONT_NAME):
+        return BUNDLED_FONT_NAME
+    else:
+        return None
 
 def get_font(path, size):
     try:
-        return ImageFont.truetype(path, int(size)) if path else ImageFont.load_default()
-    except:
+        if path:
+            return ImageFont.truetype(path, int(size))
+        else:
+            return ImageFont.load_default()
+    except Exception:
         return ImageFont.load_default()
 
 def draw_radial_dashes(draw, center, inner_r, outer_r, num_dashes, width, fill):
@@ -220,10 +205,7 @@ def create_seal_image(company, state_input, reg_no, color_hex):
     draw = ImageDraw.Draw(img)
     fill = ImageColor.getrgb(color_hex)
     
-    font_path = load_font_path()
-    # 如果没有找到字体，打印警告但不崩溃
-    if not font_path:
-        print("ALERT: Font download failed. Using default font.")
+    font_path = get_font_path()
 
     # 参数
     size_seal = 75 * scale 
@@ -296,6 +278,12 @@ with t_col1:
 with t_col2:
     st.button(txt["toggle_lang"], on_click=toggle_language, use_container_width=True)
 
+# 字体检查
+font_path_check = get_font_path()
+if not font_path_check:
+    st.error(txt["font_error"])
+    st.stop()
+
 col1, col2 = st.columns([1, 1], gap="large")
 
 with col1:
@@ -311,6 +299,7 @@ with col2:
         with st.spinner(txt["loading"]):
             try:
                 img = create_seal_image(name, state, reg_no, color)
+                # 使用灰色网格背景展示透明度
                 st.markdown("""<style>[data-testid="stImage"]{background:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGcmaWxsPSIjZjBmMGYwIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiLz48cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIvPjwvZz48L3N2Zz4=");border-radius:8px;}</style>""", unsafe_allow_html=True)
                 st.image(img, use_container_width=True)
                 
@@ -332,4 +321,20 @@ with col2:
         st.info(txt["info_start"])
 
 st.markdown("---")
-st.caption(txt["warn_disclaimer"])
+
+# 📄 使用说明板块
+with st.container():
+    st.markdown(f"#### {txt['usage_title']}")
+    # 使用灰色小字排版，增加可读性
+    st.markdown(f"""
+    <div style="color: #666; font-size: 0.9em; line-height: 1.6; background-color: #f9f9f9; padding: 15px; border-radius: 5px;">
+    {txt['usage_content']}
+    </div>
+    """, unsafe_allow_html=True)
+
+# 🏢 版权信息
+st.markdown(f"""
+<div style="text-align: center; margin-top: 40px; color: #aaa; font-size: 0.8em; border-top: 1px solid #eee; padding-top: 20px;">
+{txt['copyright']}
+</div>
+""", unsafe_allow_html=True)
